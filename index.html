@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HGZY AI ULTRA V20 - 30s SPECIAL</title>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&family=Share+Tech+Mono&display=swap');
+
+        *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent;}
+        body{background:#000;overflow:hidden;height:100vh;width:100%;font-family:'Orbitron',sans-serif;}
+
+        .game-frame{width:100%;height:100%;border:none;position:absolute;top:0;left:0;z-index:1;}
+
+        /* --- Compact Floating UI --- */
+        .sig-box {
+            position: fixed;
+            top: 20%;
+            right: 15px;
+            width: 160px; 
+            padding: 2px; 
+            background: linear-gradient(135deg, #00f2fe, #7000ff);
+            border-radius: 15px;
+            z-index: 9999;
+            box-shadow: 0 0 25px rgba(112, 0, 255, 0.5);
+            touch-action: none;
+            transition: transform 0.2s;
+        }
+
+        .inner-box { 
+            background: rgba(13, 13, 13, 0.95); 
+            border-radius: 13px;
+            padding: 12px 8px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        #clockDisplay {
+            font-family: 'Share Tech Mono';
+            font-size: 11px;
+            color: #00f2fe;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+
+        .period-info {
+            font-size: 9px;
+            color: #aaa;
+            margin-bottom: 8px;
+            font-family: 'Share Tech Mono';
+        }
+
+        /* --- Login Section --- */
+        #passUI input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #111;
+            border: 1px solid #7000ff;
+            color: #fff;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 12px;
+            outline: none;
+            box-shadow: inset 0 0 5px #7000ff;
+        }
+
+        .btn-connect {
+            background: linear-gradient(90deg, #00f2fe, #7000ff);
+            color: #fff;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            font-weight: 900;
+            border-radius: 8px;
+            font-size: 11px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        /* --- Signal Display --- */
+        #mainUI { display: none; }
+
+        .timer-container { 
+            margin-bottom: 10px; 
+            background: rgba(255,255,255,0.05);
+            border-radius: 5px;
+            padding: 5px;
+        }
+
+        #timerDisplay {
+            font-size: 18px;
+            color: #00f2fe;
+            font-family: 'Share Tech Mono';
+            font-weight: bold;
+        }
+
+        .signal-content {
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+        }
+
+        .res-val {
+            font-size: 28px;
+            font-weight: 900;
+            display: none;
+            letter-spacing: 2px;
+        }
+
+        .BIG_CLR { color: #ffde00; text-shadow: 0 0 20px rgba(255, 222, 0, 0.6); }
+        .SMALL_CLR { color: #00ff88; text-shadow: 0 0 20px rgba(0, 255, 136, 0.6); }
+
+        .loading-text {
+            font-size: 11px;
+            color: #4facfe;
+            letter-spacing: 2px;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Game Site Iframe -->
+<iframe class="game-frame" src="https://hgnice.bet/#/register?invitationCode=511711502736"></iframe>
+
+<!-- AI Prediction Box -->
+<div id="sigBox" class="sig-box">
+    <div class="inner-box">
+        <div id="clockDisplay">00:00:00</div>
+        <div class="period-info" id="periodDisplay">PERIOD: --------</div>
+        
+        <div id="passUI">
+            <input type="password" id="passInput" placeholder="ENTER PIN">
+            <button class="btn-connect" onclick="login()">ACTIVATE AI V20</button>
+        </div>
+
+        <div id="mainUI">
+            <div class="timer-container">
+                <span id="timerDisplay">00s</span>
+            </div>
+            <div class="signal-content">
+                <div id="loader" class="loading-text">ANALYZING...</div>
+                <div id="resText" class="res-val">---</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- Firebase Configuration ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyBPBQOeApFZQwGX8G4mZxhY5C2jjN6VWmU",
+        authDomain: "dkwin-panel-ai.firebaseapp.com",
+        databaseURL: "https://dkwin-panel-ai-default-rtdb.firebaseio.com",
+        projectId: "dkwin-panel-ai",
+        storageBucket: "dkwin-panel-ai.firebasestorage.app",
+        messagingSenderId: "925573387640",
+        appId: "1:925573387640:web:8faf648b0b89933c89e48d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    let dbSignal = null;
+
+    // --- Time & Clock Logic ---
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('clockDisplay').innerText = now.toLocaleTimeString();
+        
+        // Calculate Period Number for 30s
+        const totalSeconds = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
+        const periodIndex = Math.floor(totalSeconds / 30);
+        const dateStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
+        document.getElementById('periodDisplay').innerText = "PERIOD: " + dateStr + (1000 + periodIndex);
+    }
+    setInterval(updateClock, 1000);
+
+    // --- Login System ---
+    function login(){
+        const pin = document.getElementById('passInput').value;
+        if(pin === "VIP100"){
+            document.getElementById('passUI').style.display = 'none';
+            document.getElementById('mainUI').style.display = 'block';
+            startEngine();
+        } else {
+            alert("WRONG PIN! ACCESS DENIED.");
+        }
+    }
+
+    // --- Main Prediction Engine ---
+    function startEngine(){
+        // Listen to Firebase for manual signals
+        database.ref('current_signal').on('value', (snapshot) => {
+            dbSignal = snapshot.val(); 
+        });
+
+        setInterval(() => {
+            const now = new Date();
+            const seconds = now.getSeconds();
+            const remain = 30 - (seconds % 30); 
+
+            const timerDisplay = document.getElementById('timerDisplay');
+            const resText = document.getElementById('resText');
+            const loader = document.getElementById('loader');
+
+            timerDisplay.innerText = remain.toString().padStart(2, '0') + "s";
+
+            // Analysis Phase (Last 5 seconds and first 2 seconds)
+            if(remain <= 5 || remain > 28) {
+                resText.style.display = "none";
+                loader.style.display = "block";
+                loader.innerText = "WAITING...";
+            } else {
+                loader.style.display = "none";
+                resText.style.display = "block";
+
+                // Priority: 1. Firebase Signal | 2. AI Algorithm
+                if (dbSignal && dbSignal.period === document.getElementById('periodDisplay').innerText) {
+                    resText.innerText = dbSignal.result;
+                } else {
+                    // Logic for 30s prediction
+                    const totalPeriods = Math.floor(((now.getHours() * 3600) + (now.getMinutes() * 60) + seconds) / 30);
+                    const pseudoRandom = (totalPeriods * 9 + 7) % 10;
+                    
+                    if(pseudoRandom >= 5){
+                        resText.innerText = "BIG";
+                        resText.className = "res-val BIG_CLR";
+                    } else {
+                        resText.innerText = "SMALL";
+                        resText.className = "res-val SMALL_CLR";
+                    }
+                }
+            }
+        }, 1000);
+    }
+
+    // --- Draggable UI Logic ---
+    const box = document.getElementById('sigBox');
+    let offset = [0,0], isDown = false;
+
+    const start = (e) => {
+        isDown = true;
+        const cx = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const cy = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        offset = [box.offsetLeft - cx, box.offsetTop - cy];
+    };
+
+    const move = (e) => {
+        if(!isDown) return;
+        const cx = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const cy = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        box.style.left = (cx + offset[0]) + 'px';
+        box.style.top = (cy + offset[1]) + 'px';
+    };
+
+    box.addEventListener('mousedown', start);
+    box.addEventListener('touchstart', start, {passive: true});
+    document.addEventListener('mouseup', () => isDown = false);
+    document.addEventListener('touchend', () => isDown = false);
+    document.addEventListener('mousemove', move);
+    document.addEventListener('touchmove', move, {passive: false});
+
+</script>
+
+</body>
+</html>
